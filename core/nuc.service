@@ -1,0 +1,22 @@
+[Unit]
+Description=Nucleus resident kernel
+After=local-fs.target
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=/home/%i/nucleus
+Environment="PYTHONUNBUFFERED=1"
+ExecStartPre=/usr/bin/vmtouch -l /home/%i/nucleus/blocks/core.nblk
+ExecStart=/usr/bin/python3 -m nucleus.resident \
+    --blocks=/home/%i/nucleus/blocks \
+    --memory=/home/%i/nucleus/memory \
+    --socket=/run/nucleus.sock
+Restart=always
+RestartSec=3
+OOMScoreAdjust=-500
+Nice=-10
+LimitMEMLOCK=infinity
+
+[Install]
+WantedBy=multi-user.target
