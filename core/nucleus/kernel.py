@@ -217,7 +217,13 @@ class Kernel:
 
     def _generate_str(self, prompt, max_new=200, temperature=0.7):
         if not self.core_ok: return ""
+        vocab_size = self.store.core.vocab
+
         ids = self._tokenize(prompt)
+        # защита: id вне словаря core (рассинхрон токенизатора и core)
+        ids = [i for i in ids if 0 <= i < vocab_size]
+        if not ids:
+            return ""  # ни одного валидного токена — нечего генерить
         if len(ids) > self.n_ctx - max_new:
             ids = ids[-(self.n_ctx - max_new):]
 
@@ -225,6 +231,7 @@ class Kernel:
         if self.tokenizer and self.tokenizer.available:
             eos_ids = set(self.tokenizer.special_ids.get("eos", [])) | \
                       set(self.tokenizer.special_ids.get("im_end", []))
+        eos_ids = {i for i in eos_ids if i < vocab_size}
 
         kv = KVCache(self.store.core.n_layers, self.store.core.n_heads,
                      self.store.core.d_head, max_seq=len(ids) + max_new + 8)
@@ -239,8 +246,11 @@ class Kernel:
             last -= last.max()
             p = np.exp(last / temperature); p /= p.sum()
             nid = int(np.random.choice(len(p), p=p))
+            if nid >= vocab_size:
+                break
             out_ids.append(nid)
-            if nid in eos_ids: break
+            if nid in eos_ids:
+                break
             cur = self.store.core.forward([nid], kv=kv, pos_offset=kv.len)[-1]
             kv.len += 1
 

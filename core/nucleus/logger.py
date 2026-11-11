@@ -47,7 +47,8 @@ class Logger:
         CREATE TABLE IF NOT EXISTS entries (
             id TEXT PRIMARY KEY, ts REAL NOT NULL, iso TEXT NOT NULL,
             session TEXT, seq INTEGER, type TEXT NOT NULL,
-            actor TEXT, sig TEXT, size INTEGER
+            actor TEXT, sig TEXT, size INTEGER,
+            tags TEXT, payload TEXT
         );
         CREATE TABLE IF NOT EXISTS tags (entry_id TEXT, tag TEXT);
         CREATE TABLE IF NOT EXISTS refs (entry_id TEXT, ref_id TEXT);
@@ -58,6 +59,17 @@ class Logger:
         CREATE VIRTUAL TABLE IF NOT EXISTS entries_fts
             USING fts5(id UNINDEXED, text, tokenize='unicode61');
         """)
+        self._db.commit()
+        self._migrate()
+
+    def _migrate(self):
+        """Idempotent: добавляет tags/payload в старые БД."""
+        cur = self._db.cursor()
+        cols = {row[1] for row in cur.execute("PRAGMA table_info(entries)").fetchall()}
+        if "tags" not in cols:
+            cur.execute("ALTER TABLE entries ADD COLUMN tags TEXT DEFAULT '[]'")
+        if "payload" not in cols:
+            cur.execute("ALTER TABLE entries ADD COLUMN payload TEXT DEFAULT '{}'")
         self._db.commit()
 
     def record(self, type_, payload, tags=None, refs=None,
@@ -91,9 +103,12 @@ class Logger:
         cur = self._db.cursor()
         for e in self._buffer:
             try:
-                cur.execute("INSERT OR IGNORE INTO entries VALUES (?,?,?,?,?,?,?,?,?)",
-                            (e["id"], e["ts"], e["iso"], e["session"], e["seq"],
-                             e["type"], e["actor"], e["sig"], len(str(e["payload"]))))
+                cur.execute(
+                    "INSERT OR IGNORE INTO entries VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                    (e["id"], e["ts"], e["iso"], e["session"], e["seq"],
+                     e["type"], e["actor"], e["sig"], len(str(e["payload"])),
+                     json.dumps(e["tags"], ensure_ascii=False),
+                     json.dumps(e["payload"], ensure_ascii=False)))
                 for t in e["tags"]:
                     cur.execute("INSERT INTO tags VALUES (?,?)", (e["id"], t.lower()))
                 for r in e["refs"]:

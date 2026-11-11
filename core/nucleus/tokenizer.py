@@ -1,8 +1,4 @@
-"""
-BPE-токенизатор + ChatML.
-Работает с vocab.json + merges.txt от Qwen2.5 или любой GPT-2-style BPE.
-Fallback: byte-level, если файлов нет.
-"""
+from __future__ import annotations
 import json, re
 from pathlib import Path
 
