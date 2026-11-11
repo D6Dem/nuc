@@ -1,0 +1,37 @@
+
+### `config.yaml`
+
+```yaml
+kernel:
+  name: "Nuc"
+  blocks_dir: "./blocks"
+  memory_dir: "./memory"
+  workspace: "./workspace"
+
+core:
+  tokenizer_dir: "./blocks/qwen_tokenizer"
+  n_ctx: 2048
+  use_advanced_gpu: false       # true → device_ops.py (split CPU/GPU)
+  strategy: "hybrid"            # all-cpu | all-gpu | hybrid | gpu-hot
+  vram_reserve_mb: 384
+
+filesystem:
+  scan_roots:
+    - "~/Documents"
+    - "~/Downloads"
+    - "~/Desktop"
+    - "./workspace"
+  scan_max_depth: 8
+
+memory:
+  idle_rotate_seconds: 1800     # 30 мин
+  max_hot_bytes: 268435456      # 256 MB
+  archive_days: 7
+
+scheduler:
+  poll_seconds: 30
+  scan_every_seconds: 21600     # 6 часов
+
+voice:
+  enabled: false
+  wake_word: "nuc"
